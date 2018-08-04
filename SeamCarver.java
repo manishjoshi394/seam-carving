@@ -25,6 +25,14 @@
 import edu.princeton.cs.algs4.Picture;
 import java.util.Stack;
 
+/**
+ * The class provides an API for Seam Carving.
+ * <p>
+ * It has methods to find optimal seams and remove horizontal and vertical seams
+ * from the image.
+ *
+ * @author Manish Joshi
+ */
 public class SeamCarver {
 
     private Picture picture;    // stores defensive copy of argument to the constructor
@@ -393,6 +401,7 @@ public class SeamCarver {
         return adj;
     }
 
+    // relax all edges connected to the vertex at col, row
     private void relax(int col, int row, double[] distTo, int[] edgeTo, double[][] energy) {
         int v = vertexAt(col, row);
         for (int w : adj(col, row)) {
@@ -405,6 +414,7 @@ public class SeamCarver {
         }
     }
 
+    // kickstart relaxation
     private void initRelaxation(double[] distTo, int[] edgeTo, double[][] energy) {
         for (int row = 0; row < height(); ++row) {
             for (int col = 0; col < width(); ++col) {
@@ -413,6 +423,7 @@ public class SeamCarver {
         }
     }
 
+    // returns an array of vertices in the shortest path
     private int[] getShortestPath(double[] distTo, int[] edgeTo) {
 
         // calculate the end vertex of shortest path
