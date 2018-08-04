@@ -28,10 +28,9 @@ import java.util.Stack;
 public class SeamCarver {
 
     private Picture picture;    // stores defensive copy of argument to the constructor
-    private double[][] energy;  // stores energy of pixels
     private boolean transposed; // is Transposed ?
-    private int height;
-    private int width;
+    private int height;         // stores height 
+    private int width;          // stores width of picture
 
     /**
      * Creates a SeamCraver object based on the given Picture.
@@ -48,10 +47,6 @@ public class SeamCarver {
 
         this.height = picture.height();
         this.width = picture.width();
-
-        // setup energy array for first time, the function does its job
-        energy = null;
-        setEnergyMatrix(null);          // don't bother with null argument yet
 
         // not yet transposed dude, hang on
         this.transposed = false;
@@ -188,68 +183,21 @@ public class SeamCarver {
 
         Picture tPicture = new Picture(height(), width());
 
-        // remember Energy matrix is oriented differently
-        double[][] tEnergy = new double[width()][height()];
-
         // iterate through all pixels in picture to make a transpose
         for (int col = 0; col < width(); ++col) {
             for (int row = 0; row < height(); ++row) {
                 // copy the color values keeping transposition in mind
                 tPicture.setRGB(row, col, picture.getRGB(col, row));
-
-                // copy the energy matrix as transpose
-                tEnergy[col][row] = energy[row][col];
             }
         }
         picture = tPicture;         // set Picture to Transpose of itself
-        energy = tEnergy;           // set energy matrix to transpose
         width = picture.width();    // set new width and height
         height = picture.height();
         transposed = !transposed;
     }
 
-    /* Fixes or Creates energy matrix, Don't call this method if your Energy matrix
-    doesn't need to be fixed
-     */
-    private void setEnergyMatrix(int[] seam) {
-
-        // set up energy array if it's the first time
-        if (energy == null) {
-            energy = new double[height()][width()];
-            for (int col = 0; col < width(); ++col) {
-                for (int row = 0; row < height(); ++row) {
-                    energy[row][col] = energyAt(col, row);
-                }
-            }
-        } // fix the removed pixel entries if it's not the first time
-        else {
-
-            double[][] newEnergy = new double[height()][width()];
-            // Now here's the deal, we reuse the energy matrix 
-            // using System.arrayCopy()
-            for (int row = 0; row < height(); ++row) {
-                double[] originalRow = energy[row];
-                double[] newRow = new double[width()];
-
-                System.arraycopy(originalRow, 0, newRow, 0, seam[row]);
-                System.arraycopy(originalRow, seam[row] + 1, newRow, seam[row], width() - seam[row]);
-
-                // recalculate energies of pixels along the seam both left and right
-                if (seam[row] > 0) {
-                    newRow[seam[row] - 1] = energyAt(seam[row] - 1, row);
-                }
-                if (seam[row] < width()) {
-                    newRow[seam[row]] = energyAt(seam[row], row);
-                }
-
-                newEnergy[row] = newRow;
-            }
-            energy = newEnergy;         // Done!
-        }
-    }
-
     // initialise and setup the data structures for search
-    private void setupSeamSearch(double[] distTo, int[] edgeTo) {
+    private void setupSeamSearch(double[] distTo, int[] edgeTo, double[][] energy) {
         // iterate the pixels, do some stuff
         for (int row = 0; row < height(); ++row) {
             for (int col = 0; col < width(); ++col) {
@@ -260,7 +208,7 @@ public class SeamCarver {
 
                 // set distances to top row of pixels
                 if (row == 0) {
-                    distTo[v] = energy[row][col];
+                    distTo[v] = energy[col][row];
                 } // set distances INFINITY for all other pixels
                 else {
                     distTo[v] = Double.POSITIVE_INFINITY;
@@ -278,6 +226,7 @@ public class SeamCarver {
 
         double[] distTo;    // vertex indexed array of shortest distances
         int[] edgeTo;       // vertex indexed array of optimal incident edges
+        double[][] energy;
 
         // init distTo
         distTo = new double[height() * width()];
@@ -285,11 +234,19 @@ public class SeamCarver {
         // initialize edgeTo
         edgeTo = new int[width() * height()];
 
+        // setup local energy matrix
+        energy = new double[width()][height()];
+        for (int col = 0; col < width(); ++col) {
+            for (int row = 0; row < height(); ++row) {
+                energy[col][row] = energyAt(col, row);
+            }
+        }
+
         // Setup the data structures required for the search
-        setupSeamSearch(distTo, edgeTo);
+        setupSeamSearch(distTo, edgeTo, energy);
 
         // Kickstart relaxation
-        initRelaxation(distTo, edgeTo);
+        initRelaxation(distTo, edgeTo, energy);
 
         int[] vertexShortestPath = getShortestPath(distTo, edgeTo);
         int[] seam = new int[vertexShortestPath.length];
@@ -328,7 +285,6 @@ public class SeamCarver {
         }
         width = width() - 1;    // decrease width informally
         picture = newPicture;       // done, eh ?
-        setEnergyMatrix(seam);  // remove holes from energy matrix
 
         // check if findSeam() was called for a transposed picture. If So ? do some stuff
         if (isTransposed()) {
@@ -437,22 +393,22 @@ public class SeamCarver {
         return adj;
     }
 
-    private void relax(int col, int row, double[] distTo, int[] edgeTo) {
+    private void relax(int col, int row, double[] distTo, int[] edgeTo, double[][] energy) {
         int v = vertexAt(col, row);
         for (int w : adj(col, row)) {
             int colW = w % width();
             int rowW = w / width();
-            if (distTo[v] + energy[rowW][colW] < distTo[w]) {
-                distTo[w] = distTo[v] + energy[rowW][colW];
+            if (distTo[v] + energy[colW][rowW] < distTo[w]) {
+                distTo[w] = distTo[v] + energy[colW][rowW];
                 edgeTo[w] = v;
             }
         }
     }
 
-    private void initRelaxation(double[] distTo, int[] edgeTo) {
+    private void initRelaxation(double[] distTo, int[] edgeTo, double[][] energy) {
         for (int row = 0; row < height(); ++row) {
             for (int col = 0; col < width(); ++col) {
-                relax(col, row, distTo, edgeTo);
+                relax(col, row, distTo, edgeTo, energy);
             }
         }
     }
