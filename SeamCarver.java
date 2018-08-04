@@ -29,8 +29,6 @@ public class SeamCarver {
 
     private Picture picture;    // stores defensive copy of argument to the constructor
     private double[][] energy;  // stores energy of pixels
-    private double[] distTo;    // vertex indexed array of shortest distances
-    private int[] edgeTo;       // vertex indexed array of optimal incident edges
     private boolean transposed; // is Transposed ?
     private int height;
     private int width;
@@ -147,7 +145,8 @@ public class SeamCarver {
      * @param seam the seam to be removed
      */
     public void removeHorizontalSeam(int[] seam) {
-        if (seam == null || seam.length != width()) {
+        validateSeam(seam);
+        if (seam.length != width() || height() <= 1) {
             throw new java.lang.IllegalArgumentException();
         }
         if (!isTransposed()) {
@@ -162,7 +161,8 @@ public class SeamCarver {
      * @param seam the seam to be removed
      */
     public void removeVerticalSeam(int[] seam) {
-        if (seam == null || seam.length != height()) {
+        validateSeam(seam);
+        if (seam.length != height() || width() <= 1) {
             throw new java.lang.IllegalArgumentException();
         }
         if (isTransposed()) {
@@ -249,14 +249,7 @@ public class SeamCarver {
     }
 
     // initialise and setup the data structures for search
-    private void setupSeamSearch() {
-
-        // init distTo
-        distTo = new double[height() * width()];
-
-        // initialize edgeTo
-        edgeTo = new int[width() * height()];
-
+    private void setupSeamSearch(double[] distTo, int[] edgeTo) {
         // iterate the pixels, do some stuff
         for (int row = 0; row < height(); ++row) {
             for (int col = 0; col < width(); ++col) {
@@ -283,13 +276,22 @@ public class SeamCarver {
         width = picture.width();            // just make sure width and height
         height = picture.height();          // are proper becuase we messed with them right ?
 
+        double[] distTo;    // vertex indexed array of shortest distances
+        int[] edgeTo;       // vertex indexed array of optimal incident edges
+
+        // init distTo
+        distTo = new double[height() * width()];
+
+        // initialize edgeTo
+        edgeTo = new int[width() * height()];
+
         // Setup the data structures required for the search
-        setupSeamSearch();
+        setupSeamSearch(distTo, edgeTo);
 
         // Kickstart relaxation
-        initRelaxation();
+        initRelaxation(distTo, edgeTo);
 
-        int[] vertexShortestPath = getShortestPath();
+        int[] vertexShortestPath = getShortestPath(distTo, edgeTo);
         int[] seam = new int[vertexShortestPath.length];
 
         // pull off corresponding column indices from vertexShortestPath
@@ -335,6 +337,18 @@ public class SeamCarver {
             // we will transpose thoroughly when required
             width = picture.height();
             height = picture.width();
+        }
+    }
+
+    // validate seam
+    private void validateSeam(int[] seam) {
+        if (seam == null) {
+            throw new java.lang.IllegalArgumentException();
+        }
+        for (int i = 0; i < seam.length - 1; ++i) {
+            if (Math.abs(seam[i] - seam[i + 1]) > 1) {
+                throw new java.lang.IllegalArgumentException("Adjacent pixels in seam have distances more than 1");
+            }
         }
     }
 
@@ -423,7 +437,7 @@ public class SeamCarver {
         return adj;
     }
 
-    private void relax(int col, int row) {
+    private void relax(int col, int row, double[] distTo, int[] edgeTo) {
         int v = vertexAt(col, row);
         for (int w : adj(col, row)) {
             int colW = w % width();
@@ -435,15 +449,15 @@ public class SeamCarver {
         }
     }
 
-    private void initRelaxation() {
+    private void initRelaxation(double[] distTo, int[] edgeTo) {
         for (int row = 0; row < height(); ++row) {
             for (int col = 0; col < width(); ++col) {
-                relax(col, row);
+                relax(col, row, distTo, edgeTo);
             }
         }
     }
 
-    private int[] getShortestPath() {
+    private int[] getShortestPath(double[] distTo, int[] edgeTo) {
 
         // calculate the end vertex of shortest path
         int nearestBottomVertex = vertexAt(width() - 1, height() - 1);
