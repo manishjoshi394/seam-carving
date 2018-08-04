@@ -25,6 +25,14 @@
 import edu.princeton.cs.algs4.Picture;
 import java.util.Stack;
 
+**
+ * The class provides an API for Seam Carving.
+ * <p>
+ * It has methods to find optimal seams and remove horizontal and vertical seams
+ * from the image.
+ *
+ * @author Manish Joshi
+ */
 public class SeamCarver {
 
     private Picture picture;    // stores defensive copy of argument to the constructor
