@@ -43,7 +43,7 @@ public class SeamCarver {
     /**
      * Creates a SeamCraver object based on the given Picture.
      *
-     * @param picture
+     * @param picture the Picture to be carved
      */
     public SeamCarver(Picture picture) {
         if (picture == null) {
