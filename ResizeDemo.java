@@ -10,6 +10,7 @@
  *
  ******************************************************************************/
 
+
 import dependencies.Picture;
 import dependencies.StdOut;
 import dependencies.Stopwatch;
