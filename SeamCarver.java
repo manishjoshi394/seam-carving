@@ -22,7 +22,7 @@
  * THE SOFTWARE.
  */
 
-import edu.princeton.cs.algs4.Picture;
+import dependencies.Picture;
 import java.util.Stack;
 
 /**
